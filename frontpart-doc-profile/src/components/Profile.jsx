@@ -6,6 +6,7 @@ const Profile = () => {
     const [profile, setProfile] = useState({ name: '', bio: '', profilePicture: '' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [selectedImage, setSelectedImage] = useState(null);
     const token = localStorage.getItem('token'); // Assuming you're storing the JWT in localStorage
     const navigate = useNavigate();
 
@@ -32,10 +33,20 @@ const Profile = () => {
         }));
     };
 
+    const handleImageChange = (e) => {
+        setSelectedImage(e.target.files[0]);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const updatedProfile = await updateProfile(profile, token);
+            const formData = new FormData();
+            formData.append('name', profile.name);
+            formData.append('bio', profile.bio);
+            formData.append('profilePicture', selectedImage); // Include the image if uploaded
+            console.log(selectedImage);
+
+            const updatedProfile = await updateProfile(formData, token); // Adjust the API function to accept formData
             setProfile(updatedProfile);
             alert('Profile updated successfully');
         } catch (err) {
@@ -74,17 +85,24 @@ const Profile = () => {
                     />
                 </div>
                 <div>
-                    <label>Profile Picture URL:</label>
+                    <label>Profile Picture:</label>
                     <input
-                        type="text"
-                        name="profilePicture"
-                        value={profile.profilePicture}
-                        onChange={handleChange}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
                     />
+                    {selectedImage && (
+                        <img
+                            src={URL.createObjectURL(selectedImage)}
+                            alt="Profile Preview"
+                            style={{width: '100px', height: '100px', objectFit: 'cover'}}
+                        />
+                    )}
                 </div>
                 <button type="submit">Update Profile</button>
             </form>
-            <button onClick={handleLogout}>Logout</button> {/* Logout Button */}
+            <button onClick={handleLogout}>Logout</button>
+            {/* Logout Button */}
         </div>
     );
 };

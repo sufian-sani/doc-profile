@@ -79,8 +79,8 @@ exports.updateProfile = async (req, res) => {
 
 // Update an existing user's name and bio
 exports.updateUserAllParams = async (req, res) => {
-    const { userId } = req.params; // Extract user ID from request parameters
-    const { name, email, bio, profilePicture } = req.body; // Extract name and bio from request body
+    const userId = req.user.id; // Extract user ID from request parameters
+    const { name, bio, profilePicture } = req.body; // Extract name and bio from request body
 
     try {
         // Find the user by ID
@@ -97,9 +97,9 @@ exports.updateUserAllParams = async (req, res) => {
         }
 
         // Update user's email if provided
-        if (email !== undefined) {
-            user.email = email;
-        }
+        // if (email !== undefined) {
+        //     user.email = email;
+        // }
         await user.save(); // Save the changes
 
         // Find the profile associated with the user
@@ -125,6 +125,42 @@ exports.updateUserAllParams = async (req, res) => {
     } catch (error) {
         console.error('Error updating user name and bio:', error);
         res.status(500).json({ error: 'Failed to update user name and bio' });
+    }
+};
+
+exports.getProfile = async (req, res) => {
+
+    try {
+        const userId = req.user.id; // Assuming req.user is set by your authentication middleware
+        if(!userId) {
+            res.status(501).json({ error: 'user not valid' });
+        }
+        // Find the profile associated with the user
+        const profile = await db.Profiles.findOne({
+            where: { userId },
+            include: [
+                {
+                    model: db.Users,
+                    as: 'user', // Assuming you have the Users model associated
+                    attributes: ['name', 'email'], // Select the attributes you want to include
+                },
+            ],
+        });
+
+        if (!profile) {
+            return res.status(404).json({ error: 'Profile not found' });
+        }
+        const response = {
+            bio: profile.bio,
+            profilePicture: profile.profilePicture,
+            name: profile.user.name, // Assuming 'User' is the alias set by association
+            email: profile.user.email,
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({ error: 'Failed to fetch profile' });
     }
 };
 

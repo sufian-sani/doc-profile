@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const dotenv = require('dotenv');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/auth');
@@ -6,6 +7,7 @@ const profileRoutes = require('./routes/profile');
 
 dotenv.config();
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 // Sync Sequelize models with the database
