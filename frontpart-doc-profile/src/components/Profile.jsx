@@ -105,10 +105,10 @@ const Profile = () => {
     };
 
 
-    const handleLogout = () => {
-        localStorage.removeItem('token'); // Remove the token from local storage
-        navigate('/login'); // Redirect to the login page
-    };
+    // const handleLogout = () => {
+    //     localStorage.removeItem('token'); // Remove the token from local storage
+    //     navigate('/login'); // Redirect to the login page
+    // };
 
     if (loading) return <div>Loading...</div>;
 
@@ -155,7 +155,7 @@ const Profile = () => {
                 </div>
                 <button type="submit">Update Profile</button>
             </form>
-            <button onClick={handleLogout}>Logout</button>
+            {/*<button onClick={handleLogout}>Logout</button>*/}
             {/* Logout Button */}
         </div>
     );

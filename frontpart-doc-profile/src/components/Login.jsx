@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,7 +25,8 @@ const Login = () => {
 
             const data = await response.json();
             localStorage.setItem('token', data.token); // Store the token
-            alert('Login successful');
+            // alert('Login successful');
+            navigate('/');
         } catch (err) {
             setError(err.message);
         }
