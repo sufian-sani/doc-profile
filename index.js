@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
+const path = require('path');
 
 dotenv.config();
 const app = express();
@@ -15,6 +16,7 @@ sequelize.sync().then(() => console.log('Database synced'));
 
 
 // Routes
+app.use('/images', express.static(path.join(__dirname, 'images')));
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 

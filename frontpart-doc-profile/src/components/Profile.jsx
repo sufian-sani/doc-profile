@@ -3,7 +3,7 @@ import { getProfile, updateProfile } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-    const [profile, setProfile] = useState({ name: '', bio: '', profilePicture: '' });
+    const [profile, setProfile] = useState({ name: '', bio: ''});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [selectedImage, setSelectedImage] = useState(null);
@@ -37,22 +37,73 @@ const Profile = () => {
         setSelectedImage(e.target.files[0]);
     };
 
+    // const handleSubmit = async (e) => {
+    //     e.preventDefault();
+    //     try {
+    //         const formData = new FormData();
+    //         formData.append('name', profile.name);
+    //         formData.append('bio', profile.bio);
+    //         formData.append('profilePicture', selectedImage); // Include the image if uploaded
+    //
+    //         // const formDataObj = {};
+    //         // formData.forEach((value, key) => {
+    //         //     if (value instanceof File) {
+    //         //         formDataObj[key] = value.name; // Use file name or other file metadata
+    //         //     } else {
+    //         //         formDataObj[key] = value;
+    //         //     }
+    //         // });
+    //         //
+    //         // const jsonString = JSON.stringify(formDataObj);
+    //
+    //         const updatedProfile = await updateProfile(formData, token); // Adjust the API function to accept formData
+    //         setProfile(updatedProfile);
+    //         alert('Profile updated successfully');
+    //     } catch (err) {
+    //         setError('Failed to update profile');
+    //     }
+    // };
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const formData = new FormData();
-            formData.append('name', profile.name);
-            formData.append('bio', profile.bio);
-            formData.append('profilePicture', selectedImage); // Include the image if uploaded
-            console.log(selectedImage);
 
-            const updatedProfile = await updateProfile(formData, token); // Adjust the API function to accept formData
+        // const formDataObj = {
+        //     name: profile.name,
+        //     bio: profile.bio
+        // };
+        //
+        // if (selectedImage) {
+        //     const reader = new FileReader();
+        //     reader.onloadend = async () => {
+        //         formDataObj.profilePicture = reader.result; // Base64 string
+        //         await sendProfileData(formDataObj);
+        //     };
+        //     reader.readAsDataURL(selectedImage);
+        // } else {
+        //     await sendProfileData(formDataObj);
+        // }
+        const formData = new FormData();
+        formData.append('name', profile.name);
+        formData.append('bio', profile.bio);
+
+        if (selectedImage) {
+            formData.append('image', selectedImage); // Add the selected image file
+        }
+
+        await sendProfileData(formData);
+
+    };
+
+    const sendProfileData = async (data) => {
+        try {
+            // const jsonString = JSON.stringify(data);
+            const updatedProfile = await updateProfile(data, token);
             setProfile(updatedProfile);
             alert('Profile updated successfully');
         } catch (err) {
             setError('Failed to update profile');
         }
     };
+
 
     const handleLogout = () => {
         localStorage.removeItem('token'); // Remove the token from local storage
@@ -61,11 +112,13 @@ const Profile = () => {
 
     if (loading) return <div>Loading...</div>;
 
+    console.log(profile)
+
     return (
         <div>
             <h2>User Profile</h2>
             {error && <p style={{ color: 'red' }}>{error}</p>}
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} encType="multipart/form-data">
                 <div>
                     <label>Name:</label>
                     <input
@@ -88,14 +141,15 @@ const Profile = () => {
                     <label>Profile Picture:</label>
                     <input
                         type="file"
+                        name="profilePicture"
                         accept="image/*"
                         onChange={handleImageChange}
                     />
-                    {selectedImage && (
+                    {profile.profilePicture && (
                         <img
-                            src={URL.createObjectURL(selectedImage)}
-                            alt="Profile Preview"
-                            style={{width: '100px', height: '100px', objectFit: 'cover'}}
+                            src={`http://localhost:5000/images/${profile.profilePicture}`}
+                            alt="Profile"
+                            style={{ width: '150px', height: '150px', borderRadius: '50%' }}
                         />
                     )}
                 </div>

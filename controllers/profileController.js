@@ -25,10 +25,26 @@
 // };
 // const { Profile, User } = require('../models');
 const db = require('../models');
+// const multer = require('multer');
+// Set storage engine
+// const storage = multer.diskStorage({
+//     destination: './uploads/',
+//     filename: (req, file, cb) => {
+//         cb(null, `${Date.now()}-${file.originalname}`);
+//     },
+// });
+// Initialize upload
+// const upload = multer({ storage });
+
 // Create a profile for an existing user
 exports.createProfile = async (req, res) => {
     const userId = req.user.id;
-    const { bio, profilePicture } = req.body;
+    const { bio } = req.body;
+    let profilePicture = ''
+
+    if (req.file) {
+        profilePicture = req.file.filename; // Filename of the uploaded image
+    }
 
     try {
         // Check if the user exists
@@ -42,8 +58,10 @@ exports.createProfile = async (req, res) => {
         if (existingProfile) {
             return res.status(400).json({ error: 'Profile already exists for this user' });
         }
+        // Initialize upload
 
-        // Create the profile
+
+            // Create the profile
         const profile = await db.Profiles.create({ userId, bio, profilePicture });
         res.status(201).json(profile);
     } catch (error) {
@@ -80,7 +98,8 @@ exports.updateProfile = async (req, res) => {
 // Update an existing user's name and bio
 exports.updateUserAllParams = async (req, res) => {
     const userId = req.user.id; // Extract user ID from request parameters
-    const { name, bio, profilePicture } = req.body; // Extract name and bio from request body
+    const { name, bio } = req.body; // Extract name and bio from request body
+    let profilePicture = ''
 
     try {
         // Find the user by ID
@@ -95,6 +114,9 @@ exports.updateUserAllParams = async (req, res) => {
         if (name !== undefined) {
             user.name = name;
         }
+        if (req.file) {
+            profilePicture = req.file.filename; // Filename of the uploaded image
+        }
 
         // Update user's email if provided
         // if (email !== undefined) {
@@ -105,8 +127,12 @@ exports.updateUserAllParams = async (req, res) => {
         // Find the profile associated with the user
         const profile = await db.Profiles.findOne({ where: { userId: userId } });
         if (!profile) {
-            return res.status(404).json({ error: 'Profile not found' });
+
+            // Create the profile
+            const profile = await db.Profiles.create({ userId, bio });
+            return res.status(201).send({ profile });
         }
+
 
         // Update profile bio
         // profile.bio = bio;
@@ -129,32 +155,40 @@ exports.updateUserAllParams = async (req, res) => {
 };
 
 exports.getProfile = async (req, res) => {
-
     try {
         const userId = req.user.id; // Assuming req.user is set by your authentication middleware
         if(!userId) {
             res.status(501).json({ error: 'user not valid' });
         }
         // Find the profile associated with the user
-        const profile = await db.Profiles.findOne({
-            where: { userId },
+        // const profile = await db.Profiles.findOne({
+        //     where: { userId },
+        //     include: [
+        //         {
+        //             model: db.Users,
+        //             as: 'user', // Assuming you have the Users model associated
+        //             attributes: ['name', 'email'], // Select the attributes you want to include
+        //         },
+        //     ],
+        // });
+        const profile = await db.Users.findOne({
+            where: { id: userId },
             include: [
                 {
-                    model: db.Users,
-                    as: 'user', // Assuming you have the Users model associated
-                    attributes: ['name', 'email'], // Select the attributes you want to include
-                },
-            ],
-        });
+                    model: db.Profiles,
+                    as: 'profile',
+                }
+            ]
+        })
 
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
         }
         const response = {
-            bio: profile.bio,
-            profilePicture: profile.profilePicture,
-            name: profile.user.name, // Assuming 'User' is the alias set by association
-            email: profile.user.email,
+            bio: profile?.profile?.bio,
+            profilePicture: profile?.profile?.profilePicture,
+            name: profile.name, // Assuming 'User' is the alias set by association
+            email: profile.email,
         };
 
         res.status(200).json(response);
