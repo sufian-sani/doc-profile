@@ -1,7 +1,7 @@
 {
   "development": {
     "username": "root",
-    "password": "admin1234",
+    "password": "root",
     "database": "doc_profile",
     "host": "127.0.0.1",
     "dialect": "mysql"
