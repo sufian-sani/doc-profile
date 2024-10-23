@@ -55,10 +55,6 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: true,
         },
-        location: {
-            type: DataTypes.STRING,
-            allowNull: true,
-        },
         userId: {
             type: DataTypes.INTEGER,
             allowNull: false,

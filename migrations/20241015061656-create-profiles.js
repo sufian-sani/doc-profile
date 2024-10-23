@@ -1,47 +1,43 @@
 'use strict';
-
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('Profiles', {
       id: {
-        type: Sequelize.INTEGER,
+        allowNull: false,
         autoIncrement: true,
         primaryKey: true,
+        type: Sequelize.INTEGER,
       },
       bio: {
-        type: Sequelize.STRING,
-        allowNull: true,
+        type: Sequelize.TEXT,
       },
-      location: {
+      profilePicture: {
         type: Sequelize.STRING,
-        allowNull: true,
       },
       userId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Users',
+          model: 'Users', // Reference the Users table
           key: 'id',
         },
-      },
-      profilePicture: {
-        type: Sequelize.STRING,
-        allowNull: true,
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
       createdAt: {
-        type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        type: Sequelize.DATE,
       },
       updatedAt: {
-        type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+        type: Sequelize.DATE,
       },
     });
-  },
 
+    // Ensure foreign key support is enabled in SQLite
+    await queryInterface.sequelize.query('PRAGMA foreign_keys = ON;');
+  },
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Profiles');
-  }
+  },
 };

@@ -1,20 +1,18 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASSWORD,
-    {
-        host: process.env.DB_HOST,
-        dialect: 'mysql',
-        port: 3306, // Default MySQL port
-    }
-);
+const path = require('path'); // To specify the SQLite database path
+
+// Initialize Sequelize with SQLite
+const sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: path.join(__dirname, '../database.sqlite'), // SQLite database file location
+    logging: false, // Disable logging SQL queries (optional)
+});
 
 sequelize
     .authenticate()
-    .then(() => console.log('MySQL connected'))
-    .catch((error) => console.log('Unable to connect to MySQL:', error));
+    .then(() => console.log('SQLite connected'))
+    .catch((error) => console.log('Unable to connect to SQLite:', error));
 
 module.exports = sequelize;

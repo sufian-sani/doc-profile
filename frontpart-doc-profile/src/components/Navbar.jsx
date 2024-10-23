@@ -18,6 +18,7 @@ const Navbar = () => {
 
     return (
         <nav style={{padding: '10px', backgroundColor: '#f0f0f0'}}>
+            <Link to="/" style={{margin: '10px'}}>Home</Link>
 
             {!isAuthenticated ? (
                 <>
@@ -26,7 +27,7 @@ const Navbar = () => {
                 </>
             ) : (
                 <>
-                    <Link to="/" style={{margin: '10px'}}>Profile</Link>
+                    <Link to="/profile" style={{margin: '10px'}}>Profile</Link>
                     <button
                         onClick={handleLogout}
                         style={{margin: '10px', cursor: 'pointer'}}

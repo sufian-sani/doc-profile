@@ -26,7 +26,7 @@ const Login = () => {
             const data = await response.json();
             localStorage.setItem('token', data.token); // Store the token
             // alert('Login successful');
-            navigate('/');
+            navigate('/profile');
         } catch (err) {
             setError(err.message);
         }

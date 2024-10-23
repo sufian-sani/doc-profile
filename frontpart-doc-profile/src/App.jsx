@@ -4,6 +4,7 @@ import Navbar from './components/Navbar.jsx';
 import Profile from './components/Profile.jsx';
 import Login from './components/Login.jsx';
 import Register from './components/Register.jsx';
+import Home from "./components/Home.jsx";
 
 const App = () => {
     return (
@@ -11,7 +12,8 @@ const App = () => {
             <Navbar />
             <div style={{ padding: '20px' }}>
                 <Routes>
-                    <Route path="/" element={<Profile />} />
+                    <Route path="/" element={<Home />} />
+                    <Route path="/profile" element={<Profile />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                 </Routes>
