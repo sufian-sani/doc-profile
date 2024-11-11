@@ -75,8 +75,6 @@ exports.createSchedule = async (req, res) => {
 //     }
 // };
 
-const { Appointment, Schedule, Users } = require('../models');
-
 // Controller to create an appointment
 // exports.createAppointment = async (req, res) => {
 //     const { patientId, scheduleId } = req.body;
@@ -128,62 +126,136 @@ exports.getDoctorById = async (req, res) => {
 };
 
 // Function to generate 30-minute time slots
+// exports.getAvailableSlots = async (req, res) => {
+//     const { doctorId, date } = req.params; // doctorId and date passed as parameters
+//
+//     try {
+//         // Fetch the doctor's schedule for the given date
+//         const schedule = await db.Schedule.findOne({
+//             where: {
+//                 doctorId,
+//                 date: date, // Match the exact date
+//             }
+//         });
+//
+//         if (!schedule) {
+//             return res.status(404).json({ message: 'No schedule found for this doctor on this date.' });
+//         }
+//
+//         // Generate 30-minute slots based on the schedule
+//         const slots = generateSlots(schedule.startTime, schedule.endTime);
+//
+//         // Check if any slots are already booked
+//         const bookedAppointments = await db.Appointment.findAll({
+//             where: {
+//                 scheduleId: schedule.id,
+//             }
+//         });
+//
+//         // Remove booked slots from available slots
+//         const bookedSlotTimes = bookedAppointments.map(app => app.scheduleId);
+//         const availableSlots = slots.filter(slot => !bookedSlotTimes.includes(slot));
+//
+//         res.json({ availableSlots });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Error fetching schedule slots.' });
+//     }
+// };
+
+// Get available slots for a specific doctor on a given date
 exports.getAvailableSlots = async (req, res) => {
-    const { doctorId, date } = req.params; // doctorId and date passed as parameters
+    const { doctorId, date } = req.params;
 
     try {
-        // Fetch the doctor's schedule for the given date
-        const schedule = await db.Schedule.findOne({
+        // Find the doctor's schedule for the given date
+        const schedule = await db.Schedule.findAll({
             where: {
-                doctorId,
-                date: date, // Match the exact date
-            }
+                doctorId: doctorId,
+                date: date,  // Match the date
+            },
+            include: [{
+                model: db.Appointment,
+                as: 'appointment',
+                where: {
+                    status: 'booked', // Only check booked appointments for conflict
+                    [Op.or]: [
+                        { startTime: { [Op.gte]: db.sequelize.fn('NOW') } }, // Optional: filter future appointments
+                    ]
+                },
+                required: false  // Include even if no appointment exists
+            }]
         });
 
-        if (!schedule) {
+        // If no schedule found for the doctor on this date, return an error
+        if (!schedule.length) {
             return res.status(404).json({ message: 'No schedule found for this doctor on this date.' });
         }
 
-        // Generate 30-minute slots based on the schedule
-        const slots = generateSlots(schedule.startTime, schedule.endTime);
+        // Process the schedule and find available time slots
+        const availableSlots = schedule.map((slot) => {
+            const existingAppointments = slot.appointment;
 
-        // Check if any slots are already booked
-        const bookedAppointments = await db.Appointment.findAll({
-            where: {
-                scheduleId: schedule.id,
+            // Create the time slot range for the doctor
+            let slots = [];
+            let startTime = new Date(`${date}T${slot.startTime}`);
+            let endTime = new Date(`${date}T${slot.endTime}`);
+
+            // Iterate through the time range and check for availability
+            while (startTime < endTime) {
+                let slotAvailable = true;
+                existingAppointments.forEach((appointment) => {
+                    const appointmentStart = new Date(appointment.startTime);
+                    const appointmentEnd = new Date(appointment.endTime);
+                    if (startTime >= appointmentStart && startTime < appointmentEnd) {
+                        slotAvailable = false;
+                    }
+                });
+
+                if (slotAvailable) {
+                    slots.push({
+                        startTime: startTime.toISOString(),
+                        endTime: new Date(startTime.getTime() + 30 * 60000).toISOString(), // Adding 30 minutes
+                    });
+                }
+
+                startTime = new Date(startTime.getTime() + 30 * 60000); // Increment by 30 minutes
             }
+
+            return {
+                date: slot.date,
+                doctorId: slot.doctorId,
+                availableSlots: slots,
+            };
         });
 
-        // Remove booked slots from available slots
-        const bookedSlotTimes = bookedAppointments.map(app => app.scheduleId);
-        const availableSlots = slots.filter(slot => !bookedSlotTimes.includes(slot));
-
-        res.json({ availableSlots });
+        // Return available slots
+        res.json(availableSlots);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error fetching schedule slots.' });
+        res.status(500).json({ error: 'Failed to fetch available slots.' });
     }
 };
 
 // Helper function to generate 30-minute time slots
-function generateSlots(startTime, endTime) {
-    const slots = [];
-    let currentStartTime = moment(startTime, 'HH:mm');
-    const endTimeMoment = moment(endTime, 'HH:mm');
-
-    while (currentStartTime.isBefore(endTimeMoment)) {
-        const currentEndTime = moment(currentStartTime).add(30, 'minutes');
-
-        slots.push({
-            startTime: currentStartTime.format('HH:mm'),
-            endTime: currentEndTime.format('HH:mm')
-        });
-
-        currentStartTime = currentEndTime;
-    }
-
-    return slots;
-}
+// function generateSlots(startTime, endTime) {
+//     const slots = [];
+//     let currentStartTime = moment(startTime, 'HH:mm');
+//     const endTimeMoment = moment(endTime, 'HH:mm');
+//
+//     while (currentStartTime.isBefore(endTimeMoment)) {
+//         const currentEndTime = moment(currentStartTime).add(30, 'minutes');
+//
+//         slots.push({
+//             startTime: currentStartTime.format('HH:mm'),
+//             endTime: currentEndTime.format('HH:mm')
+//         });
+//
+//         currentStartTime = currentEndTime;
+//     }
+//
+//     return slots;
+// }
 
 
 exports.bookAppointment = async (req, res) => {

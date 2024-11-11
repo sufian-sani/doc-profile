@@ -6,7 +6,7 @@ import Login from './components/Login.jsx';
 import Register from './components/Register.jsx';
 import Home from "./components/Home.jsx";
 import DoctorList from "./pages/DoctorList.jsx";
-import DoctorDetail from "./components/DoctorDetail.jsx";
+import DoctorDetail from "./pages/DoctorDetail.jsx";
 
 const App = () => {
     return (
