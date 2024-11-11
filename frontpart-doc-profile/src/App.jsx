@@ -5,6 +5,8 @@ import Profile from './components/Profile.jsx';
 import Login from './components/Login.jsx';
 import Register from './components/Register.jsx';
 import Home from "./components/Home.jsx";
+import DoctorList from "./pages/DoctorList.jsx";
+import DoctorDetail from "./components/DoctorDetail.jsx";
 
 const App = () => {
     return (
@@ -16,6 +18,8 @@ const App = () => {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/doctors" element={<DoctorList />} />
+                    <Route path="/doctor/:id" element={<DoctorDetail />} /> {/* Doctor detail page */}
                 </Routes>
             </div>
         </Router>

@@ -1,6 +1,29 @@
 // controllers/scheduleController.js
 const db = require('../models');
 
+
+// Controller to get all doctors
+exports.getDoctors = async (req, res) => {
+    try {
+        // Fetch all users with the role 'doctor'
+        const doctors = await db.Users.findAll({
+            where: {
+                role: 'doctor',
+            },
+            attributes: ['id', 'name', 'email', 'role'], // Specify the fields you want to return
+        });
+
+        if (!doctors.length) {
+            return res.status(404).json({ message: 'No doctors found.' });
+        }
+
+        res.status(200).json(doctors);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Failed to fetch doctors.', error });
+    }
+};
+
 exports.createSchedule = async (req, res) => {
     const { doctorId, date, startTime, endTime } = req.body;
 
@@ -80,6 +103,25 @@ exports.createAppointment = async (req, res) => {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Failed to create appointment', error });
+    }
+};
+
+// Controller to get a doctor by ID
+exports.getDoctorById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const doctor = await db.Users.findOne({
+            where: { id, role: 'doctor' }, // Find doctor by ID
+            attributes: ['id', 'name', 'email','role'], // Adjust based on your model
+        });
+
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+
+        res.json(doctor);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch doctor details.' });
     }
 };
 

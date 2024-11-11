@@ -19,6 +19,7 @@ const Navbar = () => {
     return (
         <nav style={{padding: '10px', backgroundColor: '#f0f0f0'}}>
             <Link to="/" style={{margin: '10px'}}>Home</Link>
+            <Link to="/doctors" style={{margin: '10px'}}>Doctors List</Link>
 
             {!isAuthenticated ? (
                 <>

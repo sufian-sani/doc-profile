@@ -5,10 +5,16 @@ const jwt = require('jsonwebtoken');
 
 // Register user
 exports.register = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
     try {
+        // Ensure that the role is valid
+        const validRoles = ['patient', 'doctor', 'stuff'];
+        if (!validRoles.includes(role)) {
+            return res.status(400).json({ message: 'Invalid role specified' });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await db.Users.create({ name, email, password: hashedPassword });
+        const user = await db.Users.create({ name, email, password: hashedPassword, role });
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
         res.status(400).json({ error: 'Registration failed' });
