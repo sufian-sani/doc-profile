@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         static associate({Users, Schedule}) {
             // define association here
             this.belongsTo(Users, { foreignKey: 'patientId', as: 'patient' });
+            this.belongsTo(Users, { foreignKey: 'doctorId', as: 'doctor' }); // Added doctor association
             this.belongsTo(Schedule, { foreignKey: 'scheduleId', as: 'schedule' });
             // this.belongsTo(Users, { foreignKey: 'userId', as: 'users' })
             // this.belongsTo(Blogs, { foreignKey: 'blogId', as: 'blogs' })
@@ -19,6 +20,14 @@ module.exports = (sequelize, DataTypes) => {
     }
     Appointment.init({
         patientId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'Users',
+                key: 'id',
+            },
+        },
+        doctorId: {  // New field for referencing the doctor
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
@@ -38,6 +47,18 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
             defaultValue: 'booked', // Other statuses: 'completed', 'cancelled'
+        },
+        remarks: {  // New column
+            type: DataTypes.STRING,
+            allowNull: true,  // Optional field
+        },
+        startTime: {  // New column
+            type: DataTypes.DATE,
+            allowNull: false,  // Ensuring the start time is required
+        },
+        endTime: {  // New column
+            type: DataTypes.DATE,
+            allowNull: false,  // Ensuring the end time is required
         },
     }, {
         sequelize,

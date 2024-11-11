@@ -4,14 +4,18 @@ const {
     getAvailableSchedules,
     createAppointment,
     getDoctors,
-    getDoctorById
+    getDoctorById,
+    getAvailableSlots,
+    bookAppointment
 } = require('../controllers/scheduleController');
 const router = express.Router();
 
 router.post('/create', createSchedule);
-router.get('/:doctorId/schedules', getAvailableSchedules);
-router.post('/book', createAppointment);
+// router.get('/:doctorId/schedules', getAvailableSchedules);
+// router.post('/book', createAppointment);
+router.post('/appointments', bookAppointment);
 router.get('/doctors', getDoctors);
 router.get('/doctors/:id', getDoctorById);
+router.get('/doctors/:doctorId/schedules/:date/slots', getAvailableSlots);
 
 module.exports = router;

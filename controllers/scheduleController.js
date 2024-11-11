@@ -1,5 +1,7 @@
 // controllers/scheduleController.js
 const db = require('../models');
+const moment = require('moment');
+const { Op } = require('sequelize');
 
 
 // Controller to get all doctors
@@ -49,62 +51,62 @@ exports.createSchedule = async (req, res) => {
     }
 };
 
-exports.getAvailableSchedules = async (req, res) => {
-    const { doctorId } = req.params;
-
-    try {
-        const schedules = await db.Schedule.findAll({
-            where: { doctorId },
-            include: [{
-                model: db.Users,
-                as: 'doctor',
-                attributes: ['name'],
-            }],
-        });
-
-        if (!schedules.length) {
-            return res.status(404).json({ message: 'No schedules found for this doctor.' });
-        }
-
-        res.json(schedules);
-    } catch (error) {
-        // console.log(error)
-        res.status(500).json({ error: 'Failed to fetch schedules.' });
-    }
-};
+// exports.getAvailableSchedules = async (req, res) => {
+//     const { doctorId } = req.params;
+//
+//     try {
+//         const schedules = await db.Schedule.findAll({
+//             where: { doctorId },
+//             include: [{
+//                 model: db.Users,
+//                 as: 'doctor',
+//                 attributes: ['name'],
+//             }],
+//         });
+//
+//         if (!schedules.length) {
+//             return res.status(404).json({ message: 'No schedules found for this doctor.' });
+//         }
+//
+//         res.json(schedules);
+//     } catch (error) {
+//         // console.log(error)
+//         res.status(500).json({ error: 'Failed to fetch schedules.' });
+//     }
+// };
 
 const { Appointment, Schedule, Users } = require('../models');
 
 // Controller to create an appointment
-exports.createAppointment = async (req, res) => {
-    const { patientId, scheduleId } = req.body;
-
-    try {
-        // Check if the schedule exists
-        const schedule = await db.Schedule.findByPk(scheduleId);
-        if (!schedule) {
-            return res.status(404).json({ message: 'Schedule not found' });
-        }
-
-        // Check if the patient exists
-        const patient = await db.Users.findByPk(patientId);
-        if (!patient) {
-            return res.status(404).json({ message: 'Patient not found' });
-        }
-
-        // Create the appointment
-        const appointment = await Appointment.create({
-            patientId,
-            scheduleId,
-            status: 'booked', // Default status can be 'booked'
-        });
-
-        return res.status(201).json(appointment);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Failed to create appointment', error });
-    }
-};
+// exports.createAppointment = async (req, res) => {
+//     const { patientId, scheduleId } = req.body;
+//
+//     try {
+//         // Check if the schedule exists
+//         const schedule = await db.Schedule.findByPk(scheduleId);
+//         if (!schedule) {
+//             return res.status(404).json({ message: 'Schedule not found' });
+//         }
+//
+//         // Check if the patient exists
+//         const patient = await db.Users.findByPk(patientId);
+//         if (!patient) {
+//             return res.status(404).json({ message: 'Patient not found' });
+//         }
+//
+//         // Create the appointment
+//         const appointment = await Appointment.create({
+//             patientId,
+//             scheduleId,
+//             status: 'booked', // Default status can be 'booked'
+//         });
+//
+//         return res.status(201).json(appointment);
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({ message: 'Failed to create appointment', error });
+//     }
+// };
 
 // Controller to get a doctor by ID
 exports.getDoctorById = async (req, res) => {
@@ -125,3 +127,125 @@ exports.getDoctorById = async (req, res) => {
     }
 };
 
+// Function to generate 30-minute time slots
+exports.getAvailableSlots = async (req, res) => {
+    const { doctorId, date } = req.params; // doctorId and date passed as parameters
+
+    try {
+        // Fetch the doctor's schedule for the given date
+        const schedule = await db.Schedule.findOne({
+            where: {
+                doctorId,
+                date: date, // Match the exact date
+            }
+        });
+
+        if (!schedule) {
+            return res.status(404).json({ message: 'No schedule found for this doctor on this date.' });
+        }
+
+        // Generate 30-minute slots based on the schedule
+        const slots = generateSlots(schedule.startTime, schedule.endTime);
+
+        // Check if any slots are already booked
+        const bookedAppointments = await db.Appointment.findAll({
+            where: {
+                scheduleId: schedule.id,
+            }
+        });
+
+        // Remove booked slots from available slots
+        const bookedSlotTimes = bookedAppointments.map(app => app.scheduleId);
+        const availableSlots = slots.filter(slot => !bookedSlotTimes.includes(slot));
+
+        res.json({ availableSlots });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching schedule slots.' });
+    }
+};
+
+// Helper function to generate 30-minute time slots
+function generateSlots(startTime, endTime) {
+    const slots = [];
+    let currentStartTime = moment(startTime, 'HH:mm');
+    const endTimeMoment = moment(endTime, 'HH:mm');
+
+    while (currentStartTime.isBefore(endTimeMoment)) {
+        const currentEndTime = moment(currentStartTime).add(30, 'minutes');
+
+        slots.push({
+            startTime: currentStartTime.format('HH:mm'),
+            endTime: currentEndTime.format('HH:mm')
+        });
+
+        currentStartTime = currentEndTime;
+    }
+
+    return slots;
+}
+
+
+exports.bookAppointment = async (req, res) => {
+    const { patientId, doctorId, scheduleId, startTime, endTime, remarks } = req.body;
+
+    try {
+        // Validate that patient and doctor exist
+        const patient = await db.Users.findByPk(patientId);
+        if (!patient || patient.role !== 'patient') {
+            return res.status(400).json({ error: 'Patient not found or invalid role' });
+        }
+
+        const doctor = await db.Users.findByPk(doctorId);
+        if (!doctor || doctor.role !== 'doctor') {
+            return res.status(400).json({ error: 'Doctor not found or invalid role' });
+        }
+
+        // Validate that the schedule exists and belongs to the doctor
+        const schedule = await db.Schedule.findByPk(scheduleId);
+        if (!schedule || schedule.doctorId !== doctorId) {
+            return res.status(400).json({ error: 'Invalid schedule for this doctor' });
+        }
+
+        // Check if the requested time slot is available
+        // We check for conflicts where the appointment's start time or end time overlaps
+        const conflictingAppointments = await db.Appointment.findAll({
+            where: {
+                scheduleId,
+                status: 'booked',
+                [Op.or]: [
+                    {
+                        startTime: {
+                            [Op.lte]: endTime, // New appointment starts before or when an existing one ends
+                        },
+                    },
+                    {
+                        endTime: {
+                            [Op.gte]: startTime, // New appointment ends after or when an existing one starts
+                        },
+                    },
+                ],
+            },
+        });
+
+        if (conflictingAppointments.length > 0) {
+            return res.status(400).json({ error: 'The selected time slot is already booked.' });
+        }
+
+        // Create the new appointment if no conflicts
+        const appointment = await Appointment.create({
+            patientId,
+            doctorId,
+            scheduleId,
+            startTime,
+            endTime,
+            status: 'booked',
+            remarks,
+        });
+
+        res.status(201).json({ message: 'Appointment booked successfully', appointment });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to book appointment' });
+    }
+};
