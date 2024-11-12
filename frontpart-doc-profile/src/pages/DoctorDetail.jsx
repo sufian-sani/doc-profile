@@ -1,77 +1,130 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
-const DoctorDetail = () => {
+const DoctorDetails = () => {
+    const { doctorId } = useParams(); // Only doctorId is passed in the URL
+    console.log(doctorId);
     const [doctor, setDoctor] = useState(null);
-    const [schedules, setSchedules] = useState([]);
+    const [availableSlots, setAvailableSlots] = useState([]);
+    const [selectedSlot, setSelectedSlot] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const { id } = useParams();
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Default to current date
+    const navigate = useNavigate();
 
+    // Fetch doctor details and available slots based on doctorId and selected date
     useEffect(() => {
         const fetchDoctorDetails = async () => {
+            setLoading(true);
             try {
-                const response = await fetch(`http://localhost:5000/api/schedule/doctors/${id}`);
-                const data = await response.json();
+                // Fetch doctor details (e.g., name, specialty)
+                const doctorResponse = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}`);
+                const doctorData = await doctorResponse.json();
+                setDoctor(doctorData);
 
-                if (response.ok) {
-                    setDoctor(data);
-                } else {
-                    setError(data.message || 'Failed to fetch doctor details');
-                }
-
-                // Fetch doctor schedules
-                const scheduleResponse = await fetch(`http://localhost:5000/api/schedule/${id}/schedules`);
-                const scheduleData = await scheduleResponse.json();
-
-                if (scheduleResponse.ok) {
-                    setSchedules(scheduleData);
-                } else {
-                    setError(scheduleData.message || 'Failed to fetch schedules');
-                }
-
-            } catch (err) {
-                setError('Failed to fetch doctor details');
+                // Fetch available time slots for the selected doctor and date
+                const slotsResponse = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}/schedules/${selectedDate}/slots`);
+                const slotsData = await slotsResponse.json();
+                setAvailableSlots(slotsData);
+            } catch (error) {
+                console.error('Error fetching doctor details or available slots:', error);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchDoctorDetails();
-    }, [id]);
+    }, [doctorId, selectedDate]); // Re-fetch on doctorId or selectedDate change
 
-    if (loading) return <div>Loading doctor details...</div>;
-    if (error) return <div style={{ color: 'red' }}>{error}</div>;
+    // Handle the booking of the selected slot
+    const handleBookAppointment = async () => {
+        if (!selectedSlot) {
+            alert('Please select a time slot');
+            return;
+        }
+
+        try {
+            // Book appointment
+            const response = await fetch('/api/appointments/book', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    doctorId,
+                    startTime: selectedSlot.startTime,
+                    endTime: selectedSlot.endTime,
+                    patientId: 1, // Static patientId for now, you can adjust as needed
+                }),
+            });
+
+            const data = await response.json();
+            if (data.message === 'Appointment booked successfully') {
+                navigate(`/appointments/${data.appointment.id}`); // Redirect to appointment details page
+            } else {
+                alert(data.message); // Error message from backend
+            }
+        } catch (error) {
+            console.error('Error booking appointment:', error);
+            alert('Failed to book appointment');
+        }
+    };
 
     return (
-        <div>
-            <h2>Doctor Details</h2>
-            {doctor ? (
+        <div className="doctor-details">
+            {loading ? (
+                <div>Loading...</div>
+            ) : (
                 <div>
-                    <h3>{doctor.name}</h3>
-                    <p>Email: {doctor.email}</p>
-                    <p>Specialization: {doctor.specialization}</p>
-                    {/* Add more doctor details here */}
-                </div>
-            ) : (
-                <p>No doctor found.</p>
-            )}
+                    {/* Doctor Details */}
+                    {doctor && (
+                        <div className="doctor-info">
+                            <h1>{doctor.name}</h1>
+                            <p>Specialty: {doctor.specialty}</p>
+                        </div>
+                    )}
 
-            <h3>Available Schedules</h3>
-            {schedules.length > 0 ? (
-                <ul>
-                    {schedules.map((schedule) => (
-                        <li key={schedule.id}>
-                            <p>Date: {schedule.date}</p>
-                            <p>Time: {schedule.startTime} - {schedule.endTime}</p>
-                        </li>
-                    ))}
-                </ul>
-            ) : (
-                <p>No schedules available for this doctor.</p>
+                    {/* Date Selection */}
+                    <div className="date-selection">
+                        <label htmlFor="date">Select Date:</label>
+                        <input
+                            type="date"
+                            id="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Available Time Slots */}
+                    <div className="available-slots">
+                        <h2>Available Time Slots for {selectedDate}</h2>
+                        <ul>
+                            {availableSlots.length > 0 ? (
+                                availableSlots.map((slot, index) => (
+                                    <li key={index}>
+                                        <button
+                                            onClick={() => setSelectedSlot(slot)}
+                                            className={selectedSlot === slot ? 'selected' : ''}
+                                        >
+                                            {slot.formattedSlot}
+                                        </button>
+                                    </li>
+                                ))
+                            ) : (
+                                <p>No available slots for this date</p>
+                            )}
+                        </ul>
+                    </div>
+
+                    {/* Book Appointment Button */}
+                    <div className="book-appointment">
+                        <button onClick={handleBookAppointment} disabled={!selectedSlot}>
+                            Book Appointment
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );
 };
 
-export default DoctorDetail;
+export default DoctorDetails;
