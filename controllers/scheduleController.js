@@ -1,7 +1,7 @@
 // controllers/scheduleController.js
 const db = require('../models');
 const moment = require('moment');
-const { Op } = require('sequelize');
+const { Op, literal } = require('sequelize');
 
 
 // Controller to get all doctors
@@ -180,7 +180,7 @@ exports.getAvailableSlots = async (req, res) => {
                 where: {
                     status: 'booked', // Only check booked appointments for conflict
                     [Op.or]: [
-                        { startTime: { [Op.gte]: db.sequelize.fn('NOW') } }, // Optional: filter future appointments
+                        { startTime: { [Op.gte]: literal("DATETIME('now')") } } // Filters appointments with startTime in the future
                     ]
                 },
                 required: false  // Include even if no appointment exists
@@ -258,66 +258,123 @@ exports.getAvailableSlots = async (req, res) => {
 // }
 
 
+// exports.bookAppointment = async (req, res) => {
+//     const { patientId, doctorId, scheduleId, startTime, endTime, remarks } = req.body;
+//
+//     try {
+//         // Validate that patient and doctor exist
+//         const patient = await db.Users.findByPk(patientId);
+//         if (!patient || patient.role !== 'patient') {
+//             return res.status(400).json({ error: 'Patient not found or invalid role' });
+//         }
+//
+//         const doctor = await db.Users.findByPk(doctorId);
+//         if (!doctor || doctor.role !== 'doctor') {
+//             return res.status(400).json({ error: 'Doctor not found or invalid role' });
+//         }
+//
+//         // Validate that the schedule exists and belongs to the doctor
+//         const schedule = await db.Schedule.findByPk(scheduleId);
+//         if (!schedule || schedule.doctorId !== doctorId) {
+//             return res.status(400).json({ error: 'Invalid schedule for this doctor' });
+//         }
+//
+//         // Check if the requested time slot is available
+//         // We check for conflicts where the appointment's start time or end time overlaps
+//         const conflictingAppointments = await db.Appointment.findAll({
+//             where: {
+//                 scheduleId,
+//                 status: 'booked',
+//                 [Op.or]: [
+//                     {
+//                         startTime: {
+//                             [Op.lte]: endTime, // New appointment starts before or when an existing one ends
+//                         },
+//                     },
+//                     {
+//                         endTime: {
+//                             [Op.gte]: startTime, // New appointment ends after or when an existing one starts
+//                         },
+//                     },
+//                 ],
+//             },
+//         });
+//
+//         if (conflictingAppointments.length > 0) {
+//             return res.status(400).json({ error: 'The selected time slot is already booked.' });
+//         }
+//
+//         // Create the new appointment if no conflicts
+//         const appointment = await Appointment.create({
+//             patientId,
+//             doctorId,
+//             scheduleId,
+//             startTime,
+//             endTime,
+//             status: 'booked',
+//             remarks,
+//         });
+//
+//         res.status(201).json({ message: 'Appointment booked successfully', appointment });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: 'Failed to book appointment' });
+//     }
+// };
+
+// ---------------------
 exports.bookAppointment = async (req, res) => {
-    const { patientId, doctorId, scheduleId, startTime, endTime, remarks } = req.body;
+    const { doctorId, scheduleId } = req.params;
+    const { patientId, startTime, endTime } = req.body; // Assuming patientId and times are sent in the request body
 
     try {
-        // Validate that patient and doctor exist
-        const patient = await db.Users.findByPk(patientId);
-        if (!patient || patient.role !== 'patient') {
-            return res.status(400).json({ error: 'Patient not found or invalid role' });
+        // Check if the schedule exists and belongs to the specified doctor
+        const schedule = await db.Schedule.findOne({
+            where: { id: scheduleId, doctorId },
+        });
+
+        if (!schedule) {
+            return res.status(404).json({ message: 'Schedule not found for this doctor.' });
         }
 
-        const doctor = await db.Users.findByPk(doctorId);
-        if (!doctor || doctor.role !== 'doctor') {
-            return res.status(400).json({ error: 'Doctor not found or invalid role' });
-        }
-
-        // Validate that the schedule exists and belongs to the doctor
-        const schedule = await db.Schedule.findByPk(scheduleId);
-        if (!schedule || schedule.doctorId !== doctorId) {
-            return res.status(400).json({ error: 'Invalid schedule for this doctor' });
-        }
-
-        // Check if the requested time slot is available
-        // We check for conflicts where the appointment's start time or end time overlaps
-        const conflictingAppointments = await db.Appointment.findAll({
+        // Check if the selected time slot is already booked
+        const overlappingAppointments = await db.Appointment.findOne({
             where: {
                 scheduleId,
-                status: 'booked',
                 [Op.or]: [
                     {
-                        startTime: {
-                            [Op.lte]: endTime, // New appointment starts before or when an existing one ends
-                        },
+                        startTime: { [Op.between]: [startTime, endTime] },
                     },
                     {
-                        endTime: {
-                            [Op.gte]: startTime, // New appointment ends after or when an existing one starts
-                        },
+                        endTime: { [Op.between]: [startTime, endTime] },
+                    },
+                    {
+                        [Op.and]: [
+                            { startTime: { [Op.lte]: startTime } },
+                            { endTime: { [Op.gte]: endTime } },
+                        ],
                     },
                 ],
             },
         });
 
-        if (conflictingAppointments.length > 0) {
-            return res.status(400).json({ error: 'The selected time slot is already booked.' });
+        if (overlappingAppointments) {
+            return res.status(409).json({ message: 'The selected time slot is already booked.' });
         }
 
-        // Create the new appointment if no conflicts
-        const appointment = await Appointment.create({
+        // Create a new appointment
+        const appointment = await db.Appointment.create({
             patientId,
-            doctorId,
             scheduleId,
+            doctorId,
             startTime,
             endTime,
             status: 'booked',
-            remarks,
         });
 
         res.status(201).json({ message: 'Appointment booked successfully', appointment });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to book appointment' });
+        res.status(500).json({ message: 'Failed to book appointment', error });
     }
 };
