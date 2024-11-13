@@ -19,8 +19,6 @@ const Navbar = () => {
     return (
         <nav style={{padding: '10px', backgroundColor: '#f0f0f0'}}>
             <Link to="/" style={{margin: '10px'}}>Home</Link>
-            <Link to="/doctors" style={{margin: '10px'}}>Doctors List</Link>
-            <Link to="/doctor/create-schedule" style={{margin: '10px'}}>Create Schedule</Link>
 
             {!isAuthenticated ? (
                 <>
@@ -30,6 +28,8 @@ const Navbar = () => {
             ) : (
                 <>
                     <Link to="/profile" style={{margin: '10px'}}>Profile</Link>
+                    <Link to="/doctors" style={{margin: '10px'}}>Doctors List</Link>
+                    <Link to="/doctor/create-schedule" style={{margin: '10px'}}>Create Schedule</Link>
                     <button
                         onClick={handleLogout}
                         style={{margin: '10px', cursor: 'pointer'}}
