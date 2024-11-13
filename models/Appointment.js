@@ -53,11 +53,11 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true,  // Optional field
         },
         startTime: {  // New column
-            type: DataTypes.DATE,
+            type: DataTypes.TIME,
             allowNull: false,  // Ensuring the start time is required
         },
         endTime: {  // New column
-            type: DataTypes.DATE,
+            type: DataTypes.TIME,
             allowNull: false,  // Ensuring the end time is required
         },
     }, {

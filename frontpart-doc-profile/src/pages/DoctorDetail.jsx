@@ -1,130 +1,128 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
-const DoctorDetails = () => {
-    const { doctorId } = useParams(); // Only doctorId is passed in the URL
-    console.log(doctorId);
-    const [doctor, setDoctor] = useState(null);
+const DoctorDetailsPage = () => {
+    const { doctorId } = useParams();  // Get doctorId from the URL
     const [availableSlots, setAvailableSlots] = useState([]);
-    const [selectedSlot, setSelectedSlot] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Default to current date
-    const navigate = useNavigate();
+    const [error, setError] = useState(null);
+    const [bookingStatus, setBookingStatus] = useState(null);
+    const [scheduleId, setScheduleId] = useState(null);
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);  // Initialize with today's date
 
-    // Fetch doctor details and available slots based on doctorId and selected date
+    // Fetch available slots for the doctor on the selected date
     useEffect(() => {
-        const fetchDoctorDetails = async () => {
+        const fetchAvailableSlots = async () => {
             setLoading(true);
             try {
-                // Fetch doctor details (e.g., name, specialty)
-                const doctorResponse = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}`);
-                const doctorData = await doctorResponse.json();
-                setDoctor(doctorData);
-
-                // Fetch available time slots for the selected doctor and date
-                const slotsResponse = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}/schedules/${selectedDate}/slots`);
-                const slotsData = await slotsResponse.json();
-                setAvailableSlots(slotsData);
+                const response = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}/schedules/${date}/available-slots`);
+                if (!response.ok) {
+                    throw new Error('Error fetching available slots');
+                }
+                const data = await response.json();
+                setAvailableSlots(data.availableSlots);
+                setScheduleId(data.scheduleIdGet);
+                setLoading(false);
             } catch (error) {
-                console.error('Error fetching doctor details or available slots:', error);
-            } finally {
+                setError(error.message);
                 setLoading(false);
             }
         };
 
-        fetchDoctorDetails();
-    }, [doctorId, selectedDate]); // Re-fetch on doctorId or selectedDate change
+        fetchAvailableSlots();
+    }, [doctorId, date]);
 
-    // Handle the booking of the selected slot
-    const handleBookAppointment = async () => {
-        if (!selectedSlot) {
-            alert('Please select a time slot');
-            return;
-        }
+    // Book a selected time slot
+    const handleBookAppointment = async (slot) => {
+        const { startTime, endTime } = slot;
+        const formattedDate = `${date}T`;
+
+        const appointmentData = {
+            patientId: 1,  // Placeholder patientId, replace with actual patient data
+            scheduleId,
+            startTime: `${formattedDate}${slot.startTime}`,
+            endTime: `${formattedDate}${slot.endTime}`,
+        };
 
         try {
-            // Book appointment
-            const response = await fetch('/api/appointments/book', {
+            const response = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}/schedules/${scheduleId}/slots/book`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    doctorId,
-                    startTime: selectedSlot.startTime,
-                    endTime: selectedSlot.endTime,
-                    patientId: 1, // Static patientId for now, you can adjust as needed
-                }),
+                body: JSON.stringify(appointmentData),
             });
+            console.log(appointmentData)
 
-            const data = await response.json();
-            if (data.message === 'Appointment booked successfully') {
-                navigate(`/appointments/${data.appointment.id}`); // Redirect to appointment details page
-            } else {
-                alert(data.message); // Error message from backend
+            if (!response.ok) {
+                throw new Error('Failed to book the appointment');
             }
+
+            const result = await response.json();
+            setBookingStatus({ success: true, message: 'Appointment booked successfully!' });
+
+            // Optionally, refetch available slots if needed after booking
+            // fetchAvailableSlots();
+
         } catch (error) {
-            console.error('Error booking appointment:', error);
-            alert('Failed to book appointment');
+            setBookingStatus({ success: false, message: error.message });
         }
     };
 
+    // Update date when a new date is selected
+    const handleDateChange = (event) => {
+        setDate(event.target.value);
+    };
+
     return (
-        <div className="doctor-details">
+        <div>
+            <h1>Doctor Details Page</h1>
+            <h2>Available Slots for {date}</h2>
+
+            {/* Date Picker */}
+            <div>
+                <label htmlFor="date-picker">Select Date: </label>
+                <input
+                    type="date"
+                    id="date-picker"
+                    value={date}
+                    onChange={handleDateChange}
+                    min={new Date().toISOString().split('T')[0]}  // Limit to today or future dates
+                />
+            </div>
+
+            {/* Display available slots or loading/error messages */}
             {loading ? (
-                <div>Loading...</div>
+                <p>Loading available slots...</p>
+            ) : error ? (
+                <p style={{ color: 'red' }}>{error}</p>
+            ) : availableSlots.length === 0 ? (
+                <p>No available slots for this doctor on {date}.</p>
             ) : (
                 <div>
-                    {/* Doctor Details */}
-                    {doctor && (
-                        <div className="doctor-info">
-                            <h1>{doctor.name}</h1>
-                            <p>Specialty: {doctor.specialty}</p>
-                        </div>
-                    )}
+                    <h3>Available Time Slots</h3>
+                    <ul>
+                        {availableSlots.map((slot, index) => (
+                            <li key={index}>
+                                <strong>{slot.formattedSlot}</strong>
+                                <br />
+                                <button onClick={() => handleBookAppointment(slot)}>
+                                    Book Appointment
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
-                    {/* Date Selection */}
-                    <div className="date-selection">
-                        <label htmlFor="date">Select Date:</label>
-                        <input
-                            type="date"
-                            id="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Available Time Slots */}
-                    <div className="available-slots">
-                        <h2>Available Time Slots for {selectedDate}</h2>
-                        <ul>
-                            {availableSlots.length > 0 ? (
-                                availableSlots.map((slot, index) => (
-                                    <li key={index}>
-                                        <button
-                                            onClick={() => setSelectedSlot(slot)}
-                                            className={selectedSlot === slot ? 'selected' : ''}
-                                        >
-                                            {slot.formattedSlot}
-                                        </button>
-                                    </li>
-                                ))
-                            ) : (
-                                <p>No available slots for this date</p>
-                            )}
-                        </ul>
-                    </div>
-
-                    {/* Book Appointment Button */}
-                    <div className="book-appointment">
-                        <button onClick={handleBookAppointment} disabled={!selectedSlot}>
-                            Book Appointment
-                        </button>
-                    </div>
+            {/* Display booking status message */}
+            {bookingStatus && (
+                <div style={{ marginTop: '20px', color: bookingStatus.success ? 'green' : 'red' }}>
+                    {bookingStatus.message}
                 </div>
             )}
         </div>
     );
 };
 
-export default DoctorDetails;
+export default DoctorDetailsPage;
