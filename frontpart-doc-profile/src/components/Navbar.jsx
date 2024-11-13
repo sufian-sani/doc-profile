@@ -20,6 +20,7 @@ const Navbar = () => {
         <nav style={{padding: '10px', backgroundColor: '#f0f0f0'}}>
             <Link to="/" style={{margin: '10px'}}>Home</Link>
             <Link to="/doctors" style={{margin: '10px'}}>Doctors List</Link>
+            <Link to="/doctor/create-schedule" style={{margin: '10px'}}>Create Schedule</Link>
 
             {!isAuthenticated ? (
                 <>
