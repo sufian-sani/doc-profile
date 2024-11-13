@@ -41,11 +41,11 @@ const DoctorSchedulePage = () => {
         };
 
         try {
-            console.log(doctorId)
             const response = await fetch(`http://localhost:5000/api/schedule/doctors/${doctorId}/schedules`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
                 },
                 body: JSON.stringify(scheduleData),
             });

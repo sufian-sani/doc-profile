@@ -2,7 +2,6 @@ const db = require('../models');
 
 module.exports = async (req, res, next) => {
     try {
-        // Ensure user ID is available from `auth` middleware
         const userId = req.user?.id;
         if (!userId) {
             return res.status(403).json({ error: 'User ID missing, authorization denied' });
