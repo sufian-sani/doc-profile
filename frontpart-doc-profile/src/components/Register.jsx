@@ -6,6 +6,7 @@ const Register = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [role, setRole] = useState(''); // State for role
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -17,7 +18,7 @@ const Register = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name, email, password }),
+                body: JSON.stringify({ name, email, password, role }),
             });
 
             if (!response.ok) {
@@ -63,6 +64,19 @@ const Register = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
+                </div>
+                <div>
+                    <label>Role:</label>
+                    <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        required
+                    >
+                        <option value="" disabled>Select Role</option>
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="staff">Staff</option>
+                    </select>
                 </div>
                 <button type="submit">Register</button>
             </form>
